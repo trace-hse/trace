@@ -1217,7 +1217,7 @@ export default function App() {
             </div>
 
             {constructionReview && !ppeInspection && <EntryAttributionPanel pair={pairedWorkflow} available={runFinished} />}
-            <div className={constructionReview ? 'grid grid-cols-2 gap-3 items-start' : 'sticky top-[3.75rem] space-y-2.5'}>
+            {!ppeInspection && <div className={constructionReview ? 'grid grid-cols-2 gap-3 items-start' : 'sticky top-[3.75rem] space-y-2.5'}>
               <div className="space-y-2">
                 {detectionContext}
                 <GuidedDetect d={detect} tau={health?.tau ?? 2} running={running} />
@@ -1230,7 +1230,7 @@ export default function App() {
                 attacked={lastAttackResult !== null}
                 detected={!!lastAttackResult && (lastAttackResult.layer1.z > (lastAttackResult.tau ?? health?.tau ?? 2) || lastAttackResult.layer2.z > (lastAttackResult.tau ?? health?.tau ?? 2))}
                 hse={scenario === 'hse'} />
-            </div>
+            </div>}
           </div>
 
           {                                                            }

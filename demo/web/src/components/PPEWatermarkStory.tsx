@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useReducedMotion } from 'framer-motion'
 import { ArrowRight, Check, CheckCircle2, ChevronDown, ChevronUp, CircleOff, GitCompareArrows, KeyRound, Play, ScanSearch } from 'lucide-react'
 import type { PairedTrajectoryStep, PairedWorkflowData } from './PairedWorkflowStrip'
@@ -18,6 +18,7 @@ export interface PPEWatermarkStoryProps {
   appliedCandidateId?: string
   selectedCandidateId?: string
   onCandidateChange?: (candidateId: string) => void
+  children?: ReactNode
 }
 
 type ReplayState = { phase: 'idle' | 'running' | 'complete' | 'invalid'; candidateId: string; count: number }
@@ -38,7 +39,7 @@ function Illustration({ action, art }: { action?: string; art?: string }) {
 }
 
 /** Compares saved sampler results; it never runs an agent or changes the recorded log. */
-export default function PPEWatermarkStory({ pair, selected, revealed, onSelect, appliedCandidateId, selectedCandidateId, onCandidateChange }: PPEWatermarkStoryProps) {
+export default function PPEWatermarkStory({ pair, selected, revealed, onSelect, appliedCandidateId, selectedCandidateId, onCandidateChange, children }: PPEWatermarkStoryProps) {
   const titleId = useId(), contentId = useId()
   const reducedMotion = useReducedMotion()
   const candidates = choiceReplayCandidates(pair), first = candidates[0]
@@ -170,7 +171,7 @@ export default function PPEWatermarkStory({ pair, selected, revealed, onSelect, 
 
   return <section className="ppe-watermark-story" data-watermark-story data-expanded={expanded} data-replay-state={check.phase} aria-labelledby={titleId}>
     <header className="pws-toolbar">
-      <h3 id={titleId}><span className="pws-number">3</span>What changed?</h3>
+      <h3 id={titleId}><span className="pws-number">3</span>Check the watermark</h3>
       <span className="pws-current-key"><KeyRound size={13} />{appliedCandidate ? `Recorded with ${appliedKeyLabel} · step 2` : 'Injected key not available'}</span>
       <button type="button" className="pws-expand" aria-label={expanded ? 'Collapse comparison' : 'Expand comparison'}
         aria-expanded={expanded} aria-controls={contentId} onClick={() => setExpanded(value => !value)}>
@@ -271,6 +272,6 @@ export default function PPEWatermarkStory({ pair, selected, revealed, onSelect, 
           <div><span>With watermark</span><strong>≈{TASK_SUCCESS.with.toFixed(1)}%</strong><div className="pws-success-track"><i style={{ width: `${TASK_SUCCESS.with}%` }} /></div></div></div>
         <details><summary>Test details</summary><p>Approximate task-count-weighted summary of our reported main experiments: weights 140, 134 and 150, using the rounded Table 2 means. GPT-5.4-mini, three seeds; scores are 1 for solved, 0.5 for unsure and 0 for unsolved. These are the reported experiments, not a new measurement of the two HSE examples. <a href={TASK_SUCCESS.source} target="_blank" rel="noreferrer">Source and method</a></p></details>
       </section>
-    </>}</div>
+    </>}{children}</div>
   </section>
 }

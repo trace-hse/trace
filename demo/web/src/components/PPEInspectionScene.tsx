@@ -74,16 +74,16 @@ export default function PPEInspectionScene({ pair, groups, running, caseId, spee
     <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-3">
       <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-600">PPE check</span>
       <p className="text-sm font-semibold text-slate-700">{pair?.case_title ?? (variant === 'scaffold' ? 'Scaffold checkpoint' : 'Timber-yard checkpoint')}</p>
-      <span className={`ml-auto rounded-full px-2.5 py-1 text-xs font-medium ${manual && playback?.source === 'standard' ? 'bg-slate-100 text-slate-600' : 'bg-indigo-50 text-indigo-600'}`}>{manual ? `${playback?.source === 'trace' ? 'With watermark' : 'Without watermark'} · step ${step!.i + 1}` : running ? 'Replaying full TRACE' : frame.completed === steps.length && steps.length ? 'Inspection saved' : 'Recorded inspection'}</span>
+      <span className={`ml-auto rounded-full px-2.5 py-1 text-xs font-medium ${manual && playback?.source === 'standard' ? 'bg-slate-100 text-slate-600' : 'bg-indigo-50 text-indigo-600'}`}>{manual ? `${playback?.source === 'trace' ? 'Watermarked workflow' : 'Original workflow'} · step ${step!.i + 1}` : running ? 'Replaying full TRACE' : frame.completed === steps.length && steps.length ? 'Inspection saved' : 'Recorded inspection'}</span>
       <button ref={expandButton} onClick={() => setExpanded(v => !v)} aria-label={expanded ? 'Exit expanded view' : 'Expand inspection scene'} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100">{expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}</button>
     </header>
     {comparison && onPlay && <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50/70 px-4 py-2.5" aria-label="Play the same check in either run">
       <span className="mr-1 text-xs font-semibold text-slate-500">Selected check: {inspectionLabel(comparison.standard ?? comparison.trace).split(' · ')[0]}</span>
       {(['standard', 'trace'] as const).map(source => <button type="button" key={source} disabled={!comparison[source]}
         onClick={() => comparison[source] && onPlay(source, comparison[source]!.i)}
-        aria-label={`Scene: play ${source === 'trace' ? 'with' : 'without'} watermark`}
+        aria-label={`Scene: play ${source === 'trace' ? 'watermarked' : 'original'} workflow`}
         className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold disabled:opacity-35 ${source === 'trace' ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white text-slate-700'}`}>
-        <Play size={13} />{source === 'trace' ? 'With watermark' : 'Without watermark'} · step {comparison[source] ? comparison[source]!.i + 1 : '—'}
+        <Play size={13} />{source === 'trace' ? 'Watermarked workflow' : 'Original workflow'} · step {comparison[source] ? comparison[source]!.i + 1 : '—'}
       </button>)}
       <button type="button" onClick={() => { setExpanded(false); document.getElementById('ppe-workflow-comparison')?.scrollIntoView({ block: 'start', behavior: 'instant' }) }}
         className="ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-500 hover:bg-white"><ArrowUp size={13} />Back to workflows</button>

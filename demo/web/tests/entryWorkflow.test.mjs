@@ -307,43 +307,60 @@ test('injected actions have no probability or keyed-score UI, even if malformed 
   const markup = renderToStaticMarkup(React.createElement(workflow.DecisionInspector, {
     source: 'trace', step: injected, phaseTitle: 'Admission', onClose: () => {},
   }))
-  assert.match(markup, /Injected controller action.*step 5/)
+  assert.match(markup, /Watermarked workflow.*Step 5/)
+  assert.match(markup, /Action inserted by the demo controller/)
   assert.match(markup, /excluded from watermark detection/)
-  assert.match(markup, /not sampled by the agent/)
+  assert.match(markup, /the agent did not choose it/)
+  assert.match(markup, /neither watermark layer/)
   assert.doesNotMatch(markup, /100\.0%|One executable action|lowest wins|Layer 2 · additional|Watermarked decision/)
 })
 
-test('normal scenario policy inspector retains EXP explanation without claiming LLM probabilities', () => {
+test('scenario policy details explain key-guided selection without claiming AI-generated chances', () => {
   const action = step('inspect_shoes', 'ppe', 8, {
-    policy_source: 'scenario_policy', wm_index: 7, distribution: [{ cmd: 'inspect_shoes', label: 'Inspect shoes', p: .6 }, { cmd: 'inspect_shirt', label: 'Inspect shirt', p: .4 }],
+    policy_source: 'scenario_policy', wm_index: 7, detector_eligible: false, distribution: [{ cmd: 'inspect_shoes', label: 'Inspect shoes', p: .6 }, { cmd: 'inspect_shirt', label: 'Inspect shirt', p: .4 }],
     race: [{ cmd: 'inspect_shoes', label: 'Inspect shoes', p: .6, r: .8, score: .37, win: true }, { cmd: 'inspect_shirt', label: 'Inspect shirt', p: .4, r: .4, score: 2.29, win: false }],
   })
   for (const source of ['trace', 'standard']) {
     const markup = renderToStaticMarkup(React.createElement(workflow.DecisionInspector, { source, step: action, phaseTitle: 'PPE check', onClose: () => {} }))
-    assert.match(markup, /Authored scenario weights, not LLM probabilities/)
-    assert.match(markup, /eligible sampler index 7/)
+    const moreDetails = markup.match(/<details\b[^>]*data-decision-more-details[^>]*>[\s\S]*?<\/details>/)?.[0]
+    assert.ok(moreDetails)
+    assert.doesNotMatch(moreDetails.match(/^<details\b[^>]*>/)[0], /\bopen=/)
+    assert.match(moreDetails, /chances were supplied by the demo’s scenario rules, rather than estimated by an AI model/)
+    assert.match(moreDetails, /This step is excluded from watermark detection/)
+    assert.match(markup, /60\.0%/)
+    assert.match(markup, /40\.0%/)
+    assert.match(markup, /highest percentage does not have to be the one chosen/)
     assert.doesNotMatch(markup, /Normalized action weights from the model|distribution comes directly from the Agent/)
-    if (source === 'trace') assert.match(markup, /lowest keyed score/)
-    else assert.match(markup, /authored scenario distribution/)
+    assert.doesNotMatch(markup, /<code\b|−ln|eligible sampler index/)
+    if (source === 'trace') {
+      assert.match(markup, /The key and action chances produce selection scores; the lowest score wins/)
+      assert.match(moreDetails, /same action chances and the same decision history lets us replay this choice/)
+    } else assert.match(markup, /ordinary randomness\. No watermark key guides the choice/)
   }
 })
 
-test('Codex inspectors retain elicited-weight provenance in both arms without manufacturing an injected score', () => {
+test('Codex details retain action-chance provenance in both workflows without inventing injected probabilities', () => {
   const action = step('inspect_shoes', 'ppe', 8, {
     wm_index: 7, distribution: [{ cmd: 'inspect_shoes', label: 'Inspect shoes', p: .6 }, { cmd: 'inspect_shirt', label: 'Inspect shirt', p: .4 }],
     race: [{ cmd: 'inspect_shoes', label: 'Inspect shoes', p: .6, r: .8, score: .37, win: true }],
   })
   for (const source of ['trace', 'standard']) {
     const markup = renderToStaticMarkup(React.createElement(workflow.DecisionInspector, { source, step: action, phaseTitle: 'PPE check', onClose: () => {} }))
-    assert.match(markup, /Codex LLM-elicited weights.*not token log probabilities/)
+    const moreDetails = markup.match(/<details\b[^>]*data-decision-more-details[^>]*>[\s\S]*?<\/details>/)?.[0]
+    assert.ok(moreDetails)
+    assert.doesNotMatch(moreDetails.match(/^<details\b[^>]*>/)[0], /\bopen=/)
+    assert.match(moreDetails, /Codex suggested how strongly to favor each available action/)
+    assert.match(moreDetails, /values were converted into percentages before selection/)
+    assert.match(moreDetails, /actions, not word-by-word probabilities/)
     assert.doesNotMatch(markup, /Authored scenario weights/)
-    if (source === 'trace') assert.match(markup, /lowest keyed score/)
-    else assert.match(markup, /No keyed score is applied/)
+    assert.doesNotMatch(markup, /<code\b|−ln/)
+    if (source === 'trace') assert.match(markup, /The key and action chances produce selection scores; the lowest score wins/)
+    else assert.match(markup, /No watermark key guides the choice/)
   }
   const injected = shiftPair().trace.steps[4]
   const markup = renderToStaticMarkup(React.createElement(workflow.DecisionInspector, { source: 'trace', step: injected, phaseTitle: 'Admission', onClose: () => {} }))
-  assert.match(markup, /Injected controller action/)
-  assert.doesNotMatch(markup, /Codex LLM-elicited|lowest keyed score|Agent&#x27;s action probabilities/)
+  assert.match(markup, /Action inserted by the demo controller/)
+  assert.doesNotMatch(markup, /Codex suggested|Action probabilities|lowest keyed score|Agent&#x27;s action probabilities/)
 })
 
 test('shift source and injected badges are visible without prematurely publishing final outcomes', () => {

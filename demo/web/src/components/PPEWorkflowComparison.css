@@ -14,6 +14,38 @@
   min-width: 0;
 }
 
+.pwc-decision-dialog {
+  width: min(660px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  margin: auto;
+  padding: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 0;
+  border-radius: 24px;
+  background: #fff;
+  color: #334155;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, .2);
+}
+
+.pwc-decision-dialog::backdrop {
+  background: rgba(15, 23, 42, .4);
+}
+
+.pwc-decision-dialog [data-decision-inspector] {
+  margin: 0;
+  border: 0;
+}
+
+@media (max-width: 560px) {
+  .pwc-decision-dialog {
+    width: calc(100vw - 20px);
+    max-height: calc(100dvh - 24px);
+    padding: 4px;
+    border-radius: 18px;
+  }
+}
+
 .pwc-key-injection {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) auto auto;

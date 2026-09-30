@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 import type { Phase, WorkflowStage } from '../lib/guidedSteps'
 import { buildWorkflow, totalSteps } from '../lib/guidedSteps'
-import { PPE_TASK, ppeActionLabel, ppeActionOptionLabel, ppeCheckLabel, type PPERecordFields, type PPECheck } from '../lib/ppeInspection'
+import { PPE_TASK, ppeActionLabel, ppeActionMethodLabel, ppeActionOptionLabel, ppeCheckLabel, type PPERecordFields, type PPECheck } from '../lib/ppeInspection'
 
 export interface PairedRaceRow {
   cmd?: string
@@ -362,188 +362,175 @@ export function ActionWindow({ indices, steps, focus, source, selectedSource, cu
 }
 
 function ProbabilityBars({ step, trace }: { step: PairedTrajectoryStep; trace: boolean }) {
-  const distribution = probabilitySnapshot(step)
-  const maxProbability = Math.max(...distribution.rows.map((row) => row.p), 0.001)
+  const recordedRows = step.distribution?.length ? step.distribution : step.race ?? []
+  const candidates = new Map<string, DistributionEntry>()
+  for (const row of recordedRows) {
+    if (!Number.isFinite(row.p) || row.p < 0 || row.p > 1) continue
+    const cmd = row.cmd ?? row.label
+    candidates.set(cmd, {
+      cmd,
+      label: row.label,
+      p: row.p,
+      selected: row.cmd ? row.cmd === step.action : row.label === step.label,
+    })
+  }
+  if (!isInjectedStep(step) && ![...candidates.values()].some(row => row.selected)
+    && step.p != null && Number.isFinite(step.p) && step.p >= 0 && step.p <= 1) {
+    candidates.set(step.action, { cmd: step.action, label: step.label, p: step.p, selected: true })
+  }
+  const rows = isInjectedStep(step) ? [] : [...candidates.values()].sort((a, b) => b.p - a.p)
+  const candidateCount = Math.max(step.nCand ?? 0, recordedRows.length, step.race?.length ?? 0, rows.length)
+  const missingCount = candidateCount - rows.length
+  const forced = step.forced || step.policy_source === 'forced_rule'
+    || (step.distribution?.length || step.nCand) === 1
+  const showScores = trace && !forced && !isInjectedStep(step)
+  const savedScore = (row: DistributionEntry) => {
+    const record = step.race?.find(candidate => typeof candidate.cmd === 'string'
+      ? candidate.cmd === row.cmd : candidate.label === row.label)
+    return typeof record?.score === 'number' && Number.isFinite(record.score) && record.score >= 0
+      ? record.score : undefined
+  }
+  const validScores = rows.map(savedScore).filter((score): score is number => score !== undefined)
+  const completeScores = showScores && rows.length > 0 && rows.length === candidateCount && validScores.length === rows.length
+  if (completeScores) rows.sort((a, b) => savedScore(a)! - savedScore(b)!)
+  const lowestScore = validScores.length ? Math.min(...validScores) : undefined
+  const distinctScores = [...new Set(validScores)]
+  const scoreDigits = new Set(distinctScores.map(score => score.toFixed(2))).size < distinctScores.length ? 3 : 2
+  const roundedScoresOverlap = new Set(distinctScores.map(score => score.toFixed(scoreDigits))).size < distinctScores.length
+  const optionLabel = (row: DistributionEntry) => row.cmd.split(' method=')[0] === step.action.split(' method=')[0]
+    ? ppeActionMethodLabel(row.cmd, true) || ppeActionOptionLabel(row.cmd, row.label)
+    : ppeActionOptionLabel(row.cmd, row.label)
   return (
     <div className="rounded-xl bg-white p-3 ring-1 ring-slate-200">
-      <div className="flex flex-wrap items-start gap-2">
-        <div>
-          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold text-slate-700">
-            <BarChart3 size={12} className="text-indigo-500" /> {step.policy_source === 'scenario_policy' ? 'Scenario action weights' : "Agent's action probabilities"}
-          </div>
-          <div className="mt-0.5 text-[9.5px] text-slate-400">
-            {step.policy_source === 'scenario_policy'
-              ? 'Authored scenario weights, not LLM probabilities · normalized before sampling'
-              : step.forced || step.policy_source === 'forced_rule'
-              ? 'Environment rule · one executable action with probability 1'
-              : step.policy_source === 'codex_llm' ? 'Codex LLM-elicited weights · normalized before sampling · not token log probabilities'
-              : step.distribution ? 'Normalized action weights from the model · before sampling' : 'Recorded policy p · before sampling'}
-          </div>
-        </div>
-        <span className="ml-auto rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-extrabold text-emerald-700 ring-1 ring-emerald-200">
-          {trace ? 'unchanged by TRACE ✓' : 'original distribution'}
-        </span>
+      <div className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+        <BarChart3 size={16} className="shrink-0 text-indigo-500" /> {showScores ? 'Chances & selection scores' : 'Action probabilities'}
       </div>
-      <div className="mt-3 space-y-2">
-        {distribution.rows.map((row) => (
-          <div key={row.cmd} className="grid items-center gap-2 text-[9.5px]"
-            style={{ gridTemplateColumns: 'minmax(130px, 1fr) minmax(90px, 1.25fr) 48px' }}>
-            <span className={row.selected ? 'truncate font-extrabold text-indigo-700' : 'truncate text-slate-500'}>
-              {ppeActionOptionLabel(row.cmd, row.label)}{row.selected ? ' ← selected' : ''}
-            </span>
-            <span className="h-2 overflow-hidden rounded-full bg-slate-100">
-              <motion.span initial={{ width: 0 }} animate={{ width: `${Math.max(4, row.p / maxProbability * 100)}%` }}
-                className={['block h-full rounded-full', row.selected ? 'bg-indigo-500' : 'bg-slate-300'].join(' ')} />
-            </span>
-            <span className={row.selected ? 'text-right font-bold text-indigo-700' : 'text-right text-slate-400'}>{percent(row.p)}</span>
+      <div className="mt-3 space-y-3">
+        {rows.map((row) => {
+          const score = showScores ? savedScore(row) : undefined
+          const selectedLowest = row.selected && completeScores && score === lowestScore
+          const tiedLowest = selectedLowest && validScores.filter(value => value === lowestScore).length > 1
+          return <div key={row.cmd} data-action-probability={row.cmd} className="grid min-w-0 items-center gap-3 text-xs"
+            style={{ gridTemplateColumns: showScores ? 'minmax(0, 1fr) 84px' : 'minmax(0, 1fr)' }}>
+            <div className="min-w-0">
+              <div className="mb-1.5 flex items-start justify-between gap-3">
+                <span className={`min-w-0 break-words leading-relaxed ${row.selected ? 'font-semibold text-indigo-700' : 'text-slate-600'}`}>
+                  {optionLabel(row)}
+                  {row.selected && <span className="ml-1.5 inline-block rounded bg-indigo-50 px-1.5 py-0.5 font-semibold text-indigo-700">Selected</span>}
+                </span>
+                <span className={`shrink-0 tabular-nums ${row.selected ? 'font-bold text-indigo-700' : 'text-slate-600'}`}>{percent(row.p)}</span>
+              </div>
+              <span aria-hidden="true" className="block h-2.5 overflow-hidden rounded-full bg-slate-100">
+                <span style={{ width: `${row.p * 100}%` }}
+                  className={['block h-full rounded-full', row.selected ? trace ? 'bg-indigo-500' : 'bg-slate-700' : 'bg-slate-300'].join(' ')} />
+              </span>
+            </div>
+            {showScores && <div data-selection-score={row.cmd} data-score-missing={score === undefined || undefined}
+              className={`min-w-0 text-right tabular-nums ${selectedLowest ? 'text-indigo-700' : 'text-slate-600'}`}>
+              <span className="block text-xs">Score</span>
+              <span className={`block break-all text-sm ${selectedLowest ? 'font-bold' : 'font-semibold'}`}
+                title={score === undefined ? undefined : `Saved selection score: ${score}`}>{score === undefined ? 'Not saved' : score.toFixed(scoreDigits)}</span>
+              {selectedLowest && <span data-lowest-score className="mt-0.5 block text-xs font-semibold leading-tight">{tiedLowest ? 'Tied lowest score' : 'Lowest score'}</span>}
+            </div>}
           </div>
-        ))}
-        {!distribution.rows.length && <p className="text-[10px] text-slate-500">No probability distribution was recorded for this decision.</p>}
-        {distribution.otherCount > 0 && (
-          <div className="grid items-center gap-2 text-[9.5px]"
-            style={{ gridTemplateColumns: 'minmax(130px, 1fr) minmax(90px, 1.25fr) 48px' }}>
-            <span className="text-slate-400">Other {distribution.otherCount} actions</span>
-            <span className="h-2 overflow-hidden rounded-full bg-slate-100">
-              <span className="block h-full rounded-full bg-slate-200"
-                style={{ width: `${Math.max(4, distribution.otherProbability / Math.max(distribution.otherProbability, maxProbability) * 100)}%` }} />
-            </span>
-            <span className="text-right text-slate-400">{percent(distribution.otherProbability)}</span>
-          </div>
-        )}
+        })}
+        {!rows.length && <p className="rounded-lg bg-slate-50 p-2 text-xs leading-relaxed text-slate-600">No action probabilities were saved for this step.</p>}
       </div>
-      <div className="mt-2 text-[8.5px] text-slate-400">
-        {step.distribution?.length ?? step.nCand ?? distribution.rows.length} executable actions in this decision
-        {distribution.otherCount > 0 ? ' · remaining candidates aggregated' : ' · all recorded candidates shown'}
-      </div>
+      {showScores && roundedScoresOverlap && <p className="mt-3 text-xs leading-relaxed text-slate-500">Scores are rounded here; the lowest mark uses the full saved values.</p>}
+      {!!rows.length && (missingCount > 0 || (!recordedRows.length && candidateCount === 1 && !forced)) && <p className="mt-3 text-xs leading-relaxed text-slate-500">
+        {missingCount > 0
+          ? `Chances for ${missingCount} other action${missingCount === 1 ? '' : 's'} are unavailable.`
+          : 'Only the selected action’s chance was saved.'}
+      </p>}
     </div>
   )
 }
 
-export function DecisionInspector({ source, step, phaseTitle, onClose }: {
+export function DecisionInspector({ source, step, phaseTitle, onClose, showResult = true }: {
   source: DecisionSource
   step: PairedTrajectoryStep
   phaseTitle: string
   onClose: () => void
+  showResult?: boolean
 }) {
   const trace = source === 'trace'
   const injected = isInjectedStep(step)
-  const scoreRows = [...(step.race ?? [])].sort((a, b) => a.score - b.score).slice(0, 6)
-  const winner = scoreRows.find((row) => row.win)
-    ?? scoreRows.find((row) => row.cmd ? row.cmd === step.action : row.label === step.label)
-  const forced = !injected && (step.forced || (step.distribution?.length ?? step.nCand) === 1)
+  const selectedLabel = ppeActionOptionLabel(step.action, step.label)
+  const selectionRecorded = step.race?.some(row => (typeof row.cmd === 'string'
+    ? row.cmd === step.action : row.label === step.label)
+    && typeof row.score === 'number' && Number.isFinite(row.score) && row.score >= 0)
+  const forced = !injected && (step.forced || step.policy_source === 'forced_rule'
+    || (step.distribution?.length || step.nCand) === 1)
+  const principle = injected
+    ? 'The demo inserted this action; the agent did not choose it.'
+    : forced
+      ? 'Only one action is available, so both workflows choose it.'
+      : trace
+        ? 'The key and action chances produce selection scores; the lowest score wins.'
+        : 'Actions are drawn from these chances; the highest percentage is not guaranteed.'
+  const sourceDescription = step.policy_source === 'codex_llm'
+    ? 'Codex suggested how strongly to favor each available action. Those values were converted into percentages before selection. They describe actions, not word-by-word probabilities.'
+    : step.policy_source === 'scenario_policy'
+      ? 'These chances were supplied by the demo’s scenario rules, rather than estimated by an AI model.'
+      : step.policy_source === 'forced_rule'
+        ? 'A workflow rule supplied this action.'
+        : 'These are the action chances saved in the recording. How the original values were produced was not recorded.'
 
   return (
     <motion.div initial={{ opacity: 0, height: 0, y: -6 }} animate={{ opacity: 1, height: 'auto', y: 0 }}
       exit={{ opacity: 0, height: 0, y: -6 }} transition={{ duration: 0.24 }} className="overflow-hidden">
-      <div className={[
+      <div data-decision-inspector className={[
         'my-2.5 rounded-2xl border p-3',
         trace ? 'border-indigo-200 bg-indigo-50/45' : 'border-slate-300 bg-slate-50/80',
       ].join(' ')}>
-        <div className="mb-2.5 flex items-center gap-2">
+        <div className="mb-3 flex items-start gap-2">
           <span className={[
-            'inline-flex items-center gap-1.5 text-[10.5px] font-extrabold uppercase tracking-[.08em]',
+            'inline-flex min-w-0 items-center gap-1.5 text-sm font-bold',
             trace ? 'text-indigo-700' : 'text-slate-700',
           ].join(' ')}>
-            {injected ? <AlertCircle size={12} /> : trace ? <KeyRound size={12} /> : <Dices size={12} />}
-            {injected ? 'Injected controller action' : trace ? 'Watermarked decision' : 'Ordinary decision'} · step {step.i + 1}
+            {injected ? <AlertCircle size={16} className="shrink-0" /> : trace ? <KeyRound size={16} className="shrink-0" /> : <Dices size={16} className="shrink-0" />}
+            {trace ? 'Watermarked workflow' : 'Original workflow'} · Step {step.i + 1}
           </span>
-          <span className="truncate text-[10px] font-semibold text-slate-500">{ppeActionOptionLabel(step.action, step.label)}</span>
-          <button onClick={onClose} aria-label="Close decision details"
-            className="ml-auto rounded-full bg-white p-1.5 text-slate-400 ring-1 ring-slate-200 hover:text-slate-700">
-            <X size={12} />
+          <button type="button" onClick={onClose} aria-label="Close decision details"
+            className="ml-auto shrink-0 rounded-full bg-white p-2 text-slate-500 ring-1 ring-slate-200 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
+            <X size={16} />
           </button>
         </div>
+        <p className="mb-3 break-words text-sm leading-relaxed text-slate-800"><b>{injected ? 'Recorded action:' : 'Selected action:'}</b> {selectedLabel}</p>
 
-        {!injected && (step.stage_id || step.phase) && (
-          <div className="mb-2.5 rounded-xl bg-white/80 px-3 py-2 text-[10px] leading-relaxed text-slate-600">
-            <span className="font-bold">{phaseTitle}.</span> The environment enforces timing and tool prerequisites, not the correctness of the Agent’s judgment. An executable decision can still violate safety rules.
-            {!!step.blocked_actions?.length && (
-              <details className="mt-1 text-slate-500">
-                <summary className="cursor-pointer text-[9px]">Why other actions are unavailable</summary>
+        {!injected && <ProbabilityBars step={step} trace={trace} />}
+        <p data-decision-principle className={`mt-3 text-sm leading-relaxed ${injected ? 'text-amber-800' : trace ? 'text-indigo-800' : 'text-slate-700'}`}>{principle}</p>
+
+        <details data-decision-more-details className="mt-3 border-t border-slate-200 pt-2 text-xs leading-relaxed text-slate-600">
+          <summary className="cursor-pointer rounded py-1 font-semibold text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">More details</summary>
+          <div className="mt-2 space-y-2 break-words">
+            {injected ? <>
+              <p><b>Action inserted by the demo controller.</b> This simulates a fault, so no action probabilities apply. It carries neither watermark layer and is excluded from watermark detection.</p>
+              {step.fault?.description && <p>{step.fault.description}</p>}
+            </> : <>
+              <p><b>Probability source.</b> {sourceDescription}</p>
+              {forced ? <p><b>One available action.</b> The workflow requires this action next. Both selection methods have to choose it. The first watermark layer cannot change this choice.</p>
+                : trace ? <>
+                  <p><b>How the watermark guides the choice.</b> The recorded chances stay unchanged. Using the recorded key, the same action chances and the same decision history lets us replay this choice. A sequence of choices forms a pattern that can help identify the recording’s source.</p>
+                  {!selectionRecorded && <p>The selected action was saved, but the key-based selection details for this step are unavailable.</p>}
+                </> : <p>This selection uses ordinary randomness. No watermark key guides the choice.</p>}
+              {!forced && <p>The action with the highest percentage does not have to be the one chosen. These percentages describe selection chances, not confidence that a judgment is correct.</p>}
+              {(step.stage_id || step.phase) && <p><b>{phaseTitle}.</b> Available actions depend on what has already been done.</p>}
+              {!!step.blocked_actions?.length && <div>
+                <p className="font-semibold">Why other actions are unavailable</p>
                 <ul className="mt-1 space-y-1">
-                  {step.blocked_actions.slice(0, 3).map((action, index) => (
-                    <li key={action.command ?? index}>{ppeActionOptionLabel(action.command, action.label)}: {action.reason}</li>
-                  ))}
+                  {step.blocked_actions.map((action, index) => <li key={action.command ?? index}>{ppeActionOptionLabel(action.command, action.label)}: {action.reason}</li>)}
                 </ul>
-              </details>
-            )}
+              </div>}
+              {step.detector_eligible === false && <p>This step is excluded from watermark detection.</p>}
+              {step.attest && <p><b>Second watermark layer:</b> one extra read-only record was added. This does not repeat the on-site inspection or change the situation being inspected.</p>}
+            </>}
           </div>
-        )}
-
-        {injected ? <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-[10.5px] leading-relaxed text-amber-900">
-          <p className="font-extrabold">Independent controller fault · excluded from watermark detection</p>
-          <p className="mt-1">This transaction was injected by the scenario controller, not sampled by the agent. It has no policy probability, keyed winner or Layer 2 watermark.</p>
-          {step.fault?.description && <p className="mt-1 text-amber-800">{step.fault.description}</p>}
-          <p className="mt-1 text-[9px] text-amber-700">Display step {step.i + 1} · no eligible sampler index · no detector sample</p>
-        </div> : <div className="grid gap-2.5 lg:grid-cols-2">
-          <ProbabilityBars step={step} trace={trace} />
-
-          {forced ? (
-            <div className="flex flex-col justify-center rounded-xl bg-white p-4 ring-1 ring-slate-200">
-              <span className="text-[11px] font-extrabold text-slate-700">One executable action</span>
-              <p className="mt-2 text-[10.5px] leading-relaxed text-slate-500">
-                In this recorded state, both samplers must select “{ppeActionOptionLabel(step.action, step.label)}”.
-                Layer 1 cannot change this decision.
-              </p>
-            </div>
-          ) : trace ? (
-            <div className="rounded-xl bg-white p-3 ring-1 ring-indigo-200">
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold text-indigo-700">
-                  <KeyRound size={12} /> Keyed score
-                </div>
-                <code className="ml-auto rounded-md bg-indigo-50 px-2 py-1 text-[9px] text-indigo-700">−ln(r) ÷ p · lowest wins</code>
-              </div>
-              <div className="mt-2.5 grid gap-x-2 gap-y-1.5 text-[9px] tabular-nums"
-                style={{ gridTemplateColumns: 'minmax(120px, 1fr) 42px 42px 52px' }}>
-                <span className="text-slate-400">candidate</span><span className="text-right text-slate-400">p</span>
-                <span className="text-right text-slate-400">r</span><span className="text-right text-slate-400">score</span>
-                {scoreRows.map((row, index) => (
-                  <div key={`${row.label}-${index}`} className="contents">
-                    <span className={row.win ? 'truncate font-extrabold text-indigo-700' : 'truncate text-slate-500'}>{ppeActionOptionLabel(row.cmd, row.label)}</span>
-                    <span className={row.win ? 'text-right font-bold text-indigo-700' : 'text-right text-slate-400'}>{probabilityValue(row.p)}</span>
-                    <span className={row.win ? 'text-right font-bold text-indigo-700' : 'text-right text-slate-400'}>{row.r.toFixed(3)}</span>
-                    <span className={row.win ? 'text-right font-extrabold text-indigo-700' : 'text-right text-slate-400'}>{row.score.toFixed(2)}{row.win ? ' ←' : ''}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-2 text-[8.5px] text-slate-400">Lowest-score candidates shown · {step.nCand ?? scoreRows.length} candidates evaluated</div>
-              {!scoreRows.length && <p className="mt-2 text-[10px] text-slate-500">No keyed scores were recorded.</p>}
-            </div>
-          ) : (
-            <div className="flex flex-col justify-center rounded-xl bg-white p-4 ring-1 ring-slate-200">
-              <span className="w-fit rounded-full bg-slate-100 px-2.5 py-1 text-[9.5px] font-extrabold uppercase tracking-[.06em] text-slate-600">
-                No watermark score
-              </span>
-              <div className="mt-4 flex items-center gap-2 text-[10px] font-bold text-slate-600">
-                <span className="rounded-lg bg-slate-100 px-2.5 py-2">{step.policy_source === 'scenario_policy' ? 'Scenario policy p' : 'Agent policy p'}</span>
-                <span className="text-slate-300">→</span>
-                <span className="rounded-lg bg-slate-100 px-2.5 py-2">ordinary sample</span>
-                <span className="text-slate-300">→</span>
-                <span className="rounded-lg bg-slate-800 px-2.5 py-2 text-white">{ppeActionOptionLabel(step.action, step.label)}</span>
-              </div>
-              <p className="mt-4 text-[10.5px] leading-relaxed text-slate-500">
-                The action is sampled directly from {step.policy_source === 'scenario_policy' ? 'the authored scenario distribution' : "the Agent's original distribution"} p. No keyed score is applied.
-              </p>
-            </div>
-          )}
-        </div>}
-
-        {!injected && <div className={[
-          'mt-2.5 rounded-xl px-3 py-2 text-[10.5px] font-semibold',
-          trace ? 'bg-indigo-600 text-white' : 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200',
-        ].join(' ')}>
-          {forced
-            ? 'The environment requires this action next. There is no alternative for the sampler to choose.'
-            : trace && winner
-            ? `TRACE kept p unchanged. “${ppeActionOptionLabel(winner?.cmd ?? step.action, winner?.label ?? step.label)}” had the lowest keyed score${winner ? ` (${winner.score.toFixed(2)})` : ''}, so it was selected.`
-            : trace ? 'The action is recorded, but its keyed-score explanation is unavailable.'
-            : step.policy_source === 'scenario_policy' ? 'These are authored scenario weights, not LLM probabilities. TRACE does not rewrite them.'
-              : 'The probability distribution comes directly from the Agent. TRACE does not rewrite it.'}
-        </div>}
-        {!injected && step.wm_index != null && <p className="mt-2 px-1 text-[9px] text-slate-400">Display step {step.i + 1} · eligible sampler index {step.wm_index} (zero-based){step.detector_eligible === false ? ' · excluded from detection' : ''}</p>}
-        {step.result && <p className="mt-2 px-1 text-[10px] leading-relaxed text-slate-600"><b>Result at that time:</b> {step.result}</p>}
-        {!injected && step.attest && <p className="mt-2 px-1 text-[9px] text-violet-600">Layer 2 · additional read-only record; no new site check or state change.</p>}
+        </details>
+        {showResult && step.result && <details data-decision-result className="mt-2 border-t border-slate-200 pt-2 text-xs leading-relaxed text-slate-600">
+          <summary className="cursor-pointer rounded py-1 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">Result at that time</summary>
+          <p className="mt-2 break-words">{step.result}</p>
+        </details>}
       </div>
     </motion.div>
   )

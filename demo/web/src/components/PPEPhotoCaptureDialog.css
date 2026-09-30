@@ -1,0 +1,35 @@
+.ppe-photo-capture-dialog {
+  width: min(600px, calc(100vw - 32px));
+  max-height: calc(100dvh - 40px);
+  margin: auto;
+  padding: 20px;
+  overflow: auto;
+  border: 1px solid #dbe2ed;
+  border-radius: 18px;
+  background: #fff;
+  color: #334155;
+  box-shadow: 0 24px 80px rgb(15 23 42 / 25%);
+}
+
+.ppe-photo-capture-dialog::backdrop { background: rgb(15 23 42 / 45%); }
+.ppc-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.ppc-heading p { margin: 0 0 4px; color: #64748b; font-size: 12px; }
+.ppc-heading h2 { display: flex; align-items: center; gap: 8px; margin: 0; color: #1e293b; font-size: 20px; font-weight: 700; }
+.ppc-close { display: flex; align-items: center; justify-content: center; min-width: 36px; min-height: 36px; border: 1px solid #e2e8f0; border-radius: 9px; background: #fff; color: #64748b; cursor: pointer; }
+.ppc-close:hover { background: #f1f5f9; color: #334155; }
+.ppc-close:focus-visible, .ppc-open-demo:focus-visible { outline: 3px solid #a5b4fc; outline-offset: 3px; }
+.ppc-photo { margin: 16px 0 0; }
+.ppc-photo-frame { position: relative; overflow: hidden; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; }
+.ppc-photo-frame img { display: block; width: 100%; max-height: 330px; object-fit: contain; }
+.ppc-sample-label { position: absolute; top: 10px; left: 10px; padding: 4px 8px; border-radius: 6px; background: rgb(255 255 255 / 94%); color: #475569; font-size: 11px; font-weight: 600; }
+.ppc-photo figcaption { margin-top: 7px; color: #64748b; font-size: 11px; }
+.ppc-result { display: flex; align-items: center; gap: 7px; margin-top: 16px; padding: 10px 12px; border-radius: 9px; background: #f1f5f9; color: #475569; font-size: 13px; }
+.ppc-result[data-watermark-ready="true"] { background: #eef2ff; color: #4338ca; }
+.ppc-note { margin: 10px 0 0; color: #64748b; font-size: 12px; line-height: 1.5; }
+.ppc-open-demo { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; margin-top: 14px; padding: 9px 13px; border: 0; border-radius: 9px; background: #4f46e5; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
+.ppc-open-demo:hover { background: #4338ca; }
+
+@media (max-width: 480px) {
+  .ppe-photo-capture-dialog { padding: 16px; }
+  .ppc-open-demo { width: 100%; }
+}

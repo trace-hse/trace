@@ -438,16 +438,27 @@ function finishAnimation(harness, props) {
   return tree ?? harness.render(props)
 }
 
-test('the title-only comparison expands in place for key replay and preserves results when collapsed without changing the log', async () => {
+test('the source comparison expands in place for key replay and preserves results when collapsed without changing the log', async () => {
   const harness = await animationHarness(), pair = pairs[1], calls = []
   const original = JSON.stringify(pair)
-  const props = propsFor(pair, { onSelect: step => calls.push(step), onPlay: () => assert.fail('a visual replay must not execute the agent') })
+  const paperPreview = React.createElement('section', { 'data-paper-regression': true })
+  const props = propsFor(pair, { children: paperPreview, onSelect: step => calls.push(step), onPlay: () => assert.fail('a visual replay must not execute the agent') })
   let tree = harness.render(props)
+  const contentId = buttonNamed(tree, 'Expand comparison').props['aria-controls']
+  const assertPaperVisibility = expectedHidden => {
+    const wrappers = descendants(tree, element => element.props.id === contentId)
+    assert.equal(wrappers.length, 1, 'one container is controlled by the expansion button')
+    assert.equal(wrappers[0].props.hidden, expectedHidden)
+    assert.ok(wrappers[0].props.children.includes(paperPreview), 'the same paper preview remains inside the controlled container')
+    assert.equal(descendants(tree, element => element.props['data-paper-regression'] === true).length, 1, 'no paper preview remains outside the controlled container')
+  }
+  assertPaperVisibility(true)
   const compact = renderToStaticMarkup(tree)
-  assert.match(compact, /What changed\?/)
+  assert.match(compact, /Check the watermark/)
   assert.doesNotMatch(compact, /data-replay-key-input|data-replay-step=|data-story-art|Task success in our tests|role="dialog"|Open full comparison/)
   assert.ok(buttonNamed(tree, 'Expand comparison'))
   tree = expandComparison(harness, props, tree)
+  assertPaperVisibility(false)
   assert.doesNotMatch(renderToStaticMarkup(tree), /role="dialog"|aria-modal|pws-backdrop/)
   assert.doesNotMatch(renderToStaticMarkup(tree), /20250001|20250002/, 'raw key values stay out of the interface')
   assertNoSourcePanel(renderToStaticMarkup(tree))
@@ -488,8 +499,10 @@ test('the title-only comparison expands in place for key replay and preserves re
   const savedOption = selectedComparisonLabel(tree)
   buttonNamed(tree, 'Collapse comparison').props.onClick()
   tree = harness.render(props)
+  assertPaperVisibility(true)
   assert.doesNotMatch(renderToStaticMarkup(tree), /data-replay-key-input|data-replay-step=|data-story-art|role="dialog"/)
   tree = expandComparison(harness, props, tree)
+  assertPaperVisibility(false)
   assert.equal(selectedComparisonLabel(tree), savedOption)
   assert.equal(replayResult(tree), 'match', 'expanding does not discard the completed comparison')
   assert.equal(replayRows(tree).filter(row => row.props['data-replay-match'] === 'true').length, 15)
