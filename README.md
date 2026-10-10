@@ -4,7 +4,7 @@ Project page and interactive demo for **TRACE: A Two-Channel Robust Attribution
 Watermark via Complementary Embeddings for LLM-Agent Trajectories**
 ([arXiv:2607.08400](https://arxiv.org/abs/2607.08400)).
 
-**Live site:** https://zhenggao-30.github.io/TRACE/
+**Live site:** https://trace-hse.github.io/trace/
 
 TRACE hides two complementary watermarks in an AI agent's behaviour trajectory,
 so provenance survives even when the party holding the log deletes or rewrites
@@ -57,5 +57,5 @@ npm run dev
 Open the URL printed by Vite (normally http://localhost:5173).
 
 For deployment under a subdirectory, set the base path when building, for
-example `BASE_PATH=/TRACE/ npm run build`. The Pages workflow supplies the
+example `BASE_PATH=/trace/ npm run build`. The Pages workflow supplies the
 repository-specific path automatically.
