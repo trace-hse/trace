@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import App from './App'
 import Landing from './site/Landing'
 import AcrossDomains from './story/AcrossDomains'
+import CustomDemo, { DemoChooser } from './site/DemoEntry'
 
 
 function useHashRoute() {
@@ -25,5 +26,8 @@ export default function Router() {
   const { path: hash, revision } = useHashRoute()
   const route = hash.split('?')[0]
   if (route.startsWith('/across-domains')) return <AcrossDomains />
+  if (route.startsWith('/demo/custom')) return <CustomDemo />
+  // Bare `#/demo` is the chooser; any deep link (scenario / case / game / api) goes straight into the recorded demo.
+  if (route === '/demo' && !['scenario', 'case', 'game', 'api'].some(k => new URLSearchParams(hash.split('?')[1] ?? '').has(k))) return <DemoChooser />
   return route.startsWith('/demo') ? <App key={`${revision}:${hash}`} /> : <Landing />
 }
