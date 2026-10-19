@@ -1,13 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import type { ReactNode } from 'react'
-import { ArrowRight, Check, Cpu, Download, History, Loader2, RefreshCw } from 'lucide-react'
+import { ArrowRight, Cpu, History } from 'lucide-react'
 import Logo from '../components/Logo'
 import { STUDIO_COPY as C } from './content'
-import { explainReport, probeStudio, studioDirectUrl, studioOpenUrl } from '../lib/studioProbe'
-import type { PortReport, StudioFound } from '../lib/studioProbe'
-import { STUDIO_DOWNLOAD_URL, STUDIO_ONLINE_URL, STUDIO_REPROBE_MS } from '../lib/studioConfig'
-
-export type CustomPhase = 'checking' | 'found' | 'starting' | 'notfound'
+import { STUDIO_ONLINE_URL } from '../lib/studioConfig'
 
 function Shell({ children }: { children: ReactNode }) {
   return (
@@ -58,7 +54,7 @@ export function DemoChooserView() {
       <div className="mt-10 grid gap-5 sm:grid-cols-2">
         <ChoiceCard href="#/demo?scenario=hse" icon={<History size={22} />} title={c.existingTitle}
           body={c.existingBody} cta={c.existingCta} />
-        <ChoiceCard href="#/demo/custom" icon={<Cpu size={22} />} title={c.customTitle}
+        <ChoiceCard href={STUDIO_ONLINE_URL} icon={<Cpu size={22} />} title={c.customTitle}
           body={c.customBody} cta={c.customCta} tag={c.customTag} accent />
       </div>
     </Shell>
@@ -69,137 +65,15 @@ export function DemoChooser() {
   return <DemoChooserView />
 }
 
-export function CustomDemoView({ phase, found, onRetry, report }: {
-  phase: CustomPhase; found: StudioFound | null; onRetry: () => void; report?: PortReport[] | null
-}) {
-  const c = C.custom
-  const btn = 'inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-[14px] font-semibold transition-colors'
-  const steps = [c.step1, c.step2, c.step3]
-  return (
-    <Shell>
-      <div className="max-w-xl mx-auto">
-        {STUDIO_ONLINE_URL && (
-          <>
-            <div className="bezel mb-8"><div className="bezel-core p-7 sm:p-9" data-testid="online-card">
-              <h1 className="font-display font-bold text-[20px] tracking-[-0.02em] text-slate-900">{c.onlineTitle}</h1>
-              <p className="mt-3 text-[14.5px] leading-[1.7] text-slate-600">{c.onlineBody}</p>
-              <a href={STUDIO_ONLINE_URL} className={`${btn} mt-6 bg-l1-600 text-white hover:bg-l1-700`}>
-                {c.onlineCta}<ArrowRight size={16} />
-              </a>
-              <p className="mt-4 text-[12.5px] leading-[1.6] text-slate-400">{c.onlineNote}</p>
-            </div></div>
-            <h2 className="mb-3 text-[13px] font-semibold text-slate-500">{c.desktopTitle}</h2>
-          </>
-        )}
-        <div className="bezel"><div className="bezel-core p-7 sm:p-9" aria-live="polite" data-phase={phase}>
-          {phase === 'checking' && (
-            <div className="flex items-center gap-3 text-slate-600">
-              <Loader2 size={20} className="animate-spin text-l1-500" /><span className="text-[15px]">{c.checking}</span>
-            </div>
-          )}
-
-          {(phase === 'found' || phase === 'starting') && found && (
-            <>
-              <div className="flex items-center gap-3">
-                <span className={`grid place-items-center w-9 h-9 rounded-full ${phase === 'found' ? 'bg-emerald-50 text-emerald-600' : 'bg-l1-50 text-l1-600'}`}>
-                  {phase === 'found' ? <Check size={18} /> : <Loader2 size={18} className="animate-spin" />}
-                </span>
-                <h2 className="font-display font-bold text-[20px] tracking-[-0.02em] text-slate-900">
-                  {(phase === 'found' ? c.found : c.starting)}
-                </h2>
-              </div>
-              <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-1 text-[13.5px] text-slate-600">
-                {found.hello.version && <div className="flex gap-2"><dt className="text-slate-400">{c.version}</dt><dd className="font-mono">{found.hello.version}</dd></div>}
-                {found.hello.model && <div className="flex gap-2"><dt className="text-slate-400">{c.model}</dt><dd className="font-mono">{found.hello.model}</dd></div>}
-              </dl>
-              {phase === 'found' ? (
-                <>
-                  <a href={studioOpenUrl(found)} className={`${btn} mt-7 bg-l1-600 text-white hover:bg-l1-700`}>
-                    {c.open}<ArrowRight size={16} />
-                  </a>
-                  <p className="mt-4 text-[12.5px] leading-[1.6] text-slate-400">{c.openNote}</p>
-                </>
-              ) : <p className="mt-5 text-[13px] text-slate-400">{c.startingNote}</p>}
-            </>
-          )}
-
-          {phase === 'notfound' && (
-            <>
-              <h2 className="font-display font-bold text-[20px] tracking-[-0.02em] text-slate-900">{c.notFoundTitle}</h2>
-              <ol className="mt-5 space-y-3.5">
-                {steps.map((s, i) => (
-                  <li key={i} className="flex gap-3 text-[14.5px] leading-[1.6] text-slate-700">
-                    <span className="grid place-items-center shrink-0 w-6 h-6 rounded-full bg-l1-50 text-l1-700 text-[12px] font-bold">{i + 1}</span>
-                    <span>{s}</span>
-                  </li>
-                ))}
-              </ol>
-              <div className="mt-7 flex flex-wrap gap-3">
-                <button onClick={onRetry} className={`${btn} bg-l1-600 text-white hover:bg-l1-700`}>
-                  <RefreshCw size={15} />{c.checkAgain}
-                </button>
-                <a href={studioDirectUrl()} className={`${btn} bg-slate-100 text-slate-700 hover:bg-slate-200`}>
-                  {c.openDirect}<ArrowRight size={15} />
-                </a>
-                {STUDIO_DOWNLOAD_URL && (
-                  <a href={STUDIO_DOWNLOAD_URL} className={`${btn} bg-slate-100 text-slate-700 hover:bg-slate-200`}>
-                    <Download size={15} />{c.download}
-                  </a>
-                )}
-              </div>
-              <p className="mt-5 text-[12.5px] leading-[1.6] text-slate-400">{c.blocked}</p>
-              {report && report.length > 0 && (() => {
-                const why = explainReport(report)
-                return (
-                  <details className="mt-3 text-[12.5px] leading-[1.6] text-slate-500" data-testid="probe-details">
-                    <summary className="cursor-pointer select-none text-slate-500 hover:text-slate-700">{c.detailsTitle}</summary>
-                    <p className="mt-2">{why.summary}</p>
-                    {why.lines.length > 0 && (
-                      <ul className="mt-1.5 space-y-0.5 font-mono text-[11.5px] text-slate-500">
-                        {why.lines.map((l) => <li key={l}>{l}</li>)}
-                      </ul>
-                    )}
-                  </details>
-                )
-              })()}
-            </>
-          )}
-        </div></div>
-        <a href="#/demo?scenario=hse" className="mt-6 inline-block text-[13.5px] text-l1-600 hover:text-l1-700">
-          ← {c.backExisting}
-        </a>
-      </div>
-    </Shell>
-  )
-}
-
 export default function CustomDemo() {
-  const [phase, setPhase] = useState<CustomPhase>('checking')
-  const [found, setFound] = useState<StudioFound | null>(null)
-  const [report, setReport] = useState<PortReport[] | null>(null)
-  const [nonce, setNonce] = useState(0)
-
   useEffect(() => {
-    const ctl = new AbortController()
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const run = async (previous: StudioFound | null) => {
-      // Re-probes ask only the app that already answered; the first probe scans everything.
-      const sameOrigin = previous?.origin === window.location.origin
-      const ports = previous ? (previous.port && !sameOrigin ? [previous.port] : []) : undefined
-      const hit = await probeStudio({ ...(ports ? { ports } : {}), onReport: (r) => { if (!ctl.signal.aborted) setReport(r) } }, ctl.signal)
-      if (ctl.signal.aborted) return
-      setFound(hit)
-      if (!hit) { setPhase('notfound'); return }
-      if (hit.hello.ready) { setPhase('found'); return }
-      setPhase('starting')
-      timer = setTimeout(() => run(hit), STUDIO_REPROBE_MS)
-    }
-    setPhase('checking')
-    setReport(null)
-    run(null)
-    return () => { ctl.abort(); if (timer) clearTimeout(timer) }
-  }, [nonce])
+    window.location.replace(STUDIO_ONLINE_URL)
+  }, [])
 
-  return <CustomDemoView phase={phase} found={found} report={report}
-    onRetry={() => setNonce((n) => n + 1)} />
+  return (
+    <main>
+      <h1>Opening the online version...</h1>
+      <a href={STUDIO_ONLINE_URL}>Open the online version</a>
+    </main>
+  )
 }

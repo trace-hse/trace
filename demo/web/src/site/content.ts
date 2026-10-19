@@ -291,8 +291,7 @@ export function constructionRunSummary(rows: (RecordedPolicyMetadata & { game_id
 }
 
 // ---------------------------------------------------------------------------
-// Demo entry: the chooser (existing workflows / custom workflow) and the page
-// that finds the TRACE Studio app on this computer. English only, like the rest of the site.
+// Demo entry: the chooser for recorded workflows and the online app. English only.
 // ---------------------------------------------------------------------------
 export const STUDIO_COPY = {
   back: 'Back to the project site',
@@ -306,36 +305,8 @@ export const STUDIO_COPY = {
     existingCta: 'Open the recorded cases',
     customTitle: 'Custom workflow (live)',
     customBody:
-      'Describe your own job, watch a real model do it twice, then check the watermark with your secret key. Use it online in your browser, or in the TRACE Studio desktop app.',
+      'Describe your own job, watch a real model do it twice, then check the watermark with your secret key. Runs online in your browser, nothing to install.',
     customCta: 'Try your own workflow',
-    customTag: 'Online or on your computer',
-  },
-
-  custom: {
-    title: 'Custom workflow (live)',
-    onlineTitle: 'Use the online version',
-    onlineBody: 'Runs in your browser, nothing to install, and nothing to set up: describe your job, choose a secret key, and watch a real model do it twice.',
-    onlineCta: 'Open the online version',
-    onlineNote: 'Your secret key is sent to the server to run the job. For full privacy, use the desktop app.',
-    desktopTitle: 'Prefer to run it on your own computer?',
-    checking: 'Looking for TRACE Studio on this computer…',
-    found: 'TRACE Studio is running on this computer',
-    starting: 'TRACE Studio is starting…',
-    startingNote: 'Checking again every two seconds.',
-    version: 'Version',
-    model: 'Model',
-    open: 'Open TRACE Studio',
-    openNote: 'It opens in its own window or in this tab; your secret key never leaves your computer.',
-    notFoundTitle: 'TRACE Studio was not found on this computer',
-    step1: 'Start TRACE Studio (double-click TRACE Studio.exe).',
-    step2: 'Come back here and press “Check again”.',
-    step3: 'No app yet? TRACE Studio is a private build; ask the authors for a copy.',
-    checkAgain: 'Check again',
-    download: 'Download',
-    blocked:
-      'Your browser may block local connections from this page. If TRACE Studio is running, use “Open TRACE Studio directly”, or allow local network access for this site.',
-    openDirect: 'Open TRACE Studio directly',
-    detailsTitle: 'What this page saw',
-    backExisting: 'Back to existing workflows',
+    customTag: 'Runs online',
   },
 }
