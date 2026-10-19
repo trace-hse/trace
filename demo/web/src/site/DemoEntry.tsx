@@ -5,7 +5,7 @@ import Logo from '../components/Logo'
 import { STUDIO_COPY as C } from './content'
 import { explainReport, probeStudio, studioDirectUrl, studioOpenUrl } from '../lib/studioProbe'
 import type { PortReport, StudioFound } from '../lib/studioProbe'
-import { STUDIO_DOWNLOAD_URL, STUDIO_REPROBE_MS } from '../lib/studioConfig'
+import { STUDIO_DOWNLOAD_URL, STUDIO_ONLINE_URL, STUDIO_REPROBE_MS } from '../lib/studioConfig'
 
 export type CustomPhase = 'checking' | 'found' | 'starting' | 'notfound'
 
@@ -78,6 +78,19 @@ export function CustomDemoView({ phase, found, onRetry, report }: {
   return (
     <Shell>
       <div className="max-w-xl mx-auto">
+        {STUDIO_ONLINE_URL && (
+          <>
+            <div className="bezel mb-8"><div className="bezel-core p-7 sm:p-9" data-testid="online-card">
+              <h1 className="font-display font-bold text-[20px] tracking-[-0.02em] text-slate-900">{c.onlineTitle}</h1>
+              <p className="mt-3 text-[14.5px] leading-[1.7] text-slate-600">{c.onlineBody}</p>
+              <a href={STUDIO_ONLINE_URL} className={`${btn} mt-6 bg-l1-600 text-white hover:bg-l1-700`}>
+                {c.onlineCta}<ArrowRight size={16} />
+              </a>
+              <p className="mt-4 text-[12.5px] leading-[1.6] text-slate-400">{c.onlineNote}</p>
+            </div></div>
+            <h2 className="mb-3 text-[13px] font-semibold text-slate-500">{c.desktopTitle}</h2>
+          </>
+        )}
         <div className="bezel"><div className="bezel-core p-7 sm:p-9" aria-live="polite" data-phase={phase}>
           {phase === 'checking' && (
             <div className="flex items-center gap-3 text-slate-600">
@@ -91,9 +104,9 @@ export function CustomDemoView({ phase, found, onRetry, report }: {
                 <span className={`grid place-items-center w-9 h-9 rounded-full ${phase === 'found' ? 'bg-emerald-50 text-emerald-600' : 'bg-l1-50 text-l1-600'}`}>
                   {phase === 'found' ? <Check size={18} /> : <Loader2 size={18} className="animate-spin" />}
                 </span>
-                <h1 className="font-display font-bold text-[20px] tracking-[-0.02em] text-slate-900">
+                <h2 className="font-display font-bold text-[20px] tracking-[-0.02em] text-slate-900">
                   {(phase === 'found' ? c.found : c.starting)}
-                </h1>
+                </h2>
               </div>
               <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-1 text-[13.5px] text-slate-600">
                 {found.hello.version && <div className="flex gap-2"><dt className="text-slate-400">{c.version}</dt><dd className="font-mono">{found.hello.version}</dd></div>}
@@ -112,7 +125,7 @@ export function CustomDemoView({ phase, found, onRetry, report }: {
 
           {phase === 'notfound' && (
             <>
-              <h1 className="font-display font-bold text-[20px] tracking-[-0.02em] text-slate-900">{c.notFoundTitle}</h1>
+              <h2 className="font-display font-bold text-[20px] tracking-[-0.02em] text-slate-900">{c.notFoundTitle}</h2>
               <ol className="mt-5 space-y-3.5">
                 {steps.map((s, i) => (
                   <li key={i} className="flex gap-3 text-[14.5px] leading-[1.6] text-slate-700">

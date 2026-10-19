@@ -30,6 +30,7 @@ function load(file) {
   Function('require', 'module', 'exports', code)(req, module, module.exports)
   return module.exports
 }
+const { STUDIO_ONLINE_URL } = load(resolve(root, 'lib/studioConfig.ts'))
 const entry = load(resolve(root, 'site/DemoEntry.tsx'))
 const copy = load(resolve(root, 'site/content.ts')).STUDIO_COPY
 const html = (el) => renderToStaticMarkup(el)
@@ -54,7 +55,8 @@ test('chooser offers both cards and links to the right routes', () => {
   assert.match(text(out), /Existing workflows/)
   assert.match(text(out), /Replay the recorded HSE cases\. Opens instantly, nothing to install\./)
   assert.match(text(out), /Custom workflow \(live\)/)
-  assert.match(text(out), /Runs in the TRACE Studio app on your computer\./)
+  assert.match(text(out), /Use it online in your browser, or in the TRACE Studio desktop app\./)
+  assert.match(text(out), /Online or on your computer/)
   assert.match(out, /href="#\/demo\?scenario=hse"/)
   assert.match(out, /href="#\/demo\/custom"/)
 })
@@ -96,4 +98,22 @@ test('not found always offers a plain link to the app and explains what the page
   const hidden = custom('notfound', null, [{ port: 8765, outcome: 'unreachable', answered: true }, ...rep.slice(1)])
   assert.match(text(hidden), /accepted the connection, but the browser would not share the reply/)
   assert.doesNotMatch(custom('found', found()), /Open TRACE Studio directly/, 'the direct link is only a fallback')
+})
+
+test('the custom page leads with the online version (nothing to install) and keeps the desktop app as the second option', () => {
+  for (const out of [custom('checking'), custom('found', found()), custom('notfound')]) {
+    assert.match(out, /data-testid="online-card"/)
+    const onlineLink = out.match(/<a href="([^"]+)"[^>]*>[^<]*Open the online version/)
+    assert.ok(onlineLink, 'the online version link is present')
+    assert.equal(onlineLink[1], STUDIO_ONLINE_URL)
+    assert.ok(text(out).includes(c.onlineNote) && text(out).includes(c.desktopTitle))
+    assert.ok(out.indexOf('online-card') < out.indexOf('data-phase'), 'the online card comes first')
+  }
+  assert.match(text(custom('found', found())), /TRACE Studio is running on this computer/)
+})
+
+test('each demo entry page has exactly one main heading', () => {
+  for (const out of [chooser(), custom('checking'), custom('found', found()), custom('starting', found({ ready: false })), custom('notfound')]) {
+    assert.equal((out.match(/<h1\b/g) || []).length, 1)
+  }
 })

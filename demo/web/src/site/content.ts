@@ -306,13 +306,18 @@ export const STUDIO_COPY = {
     existingCta: 'Open the recorded cases',
     customTitle: 'Custom workflow (live)',
     customBody:
-      'Describe your own job, watch a real model do it twice, then check the watermark with your secret key. Runs in the TRACE Studio app on your computer.',
-    customCta: 'Continue with TRACE Studio',
-    customTag: 'Needs the desktop app',
+      'Describe your own job, watch a real model do it twice, then check the watermark with your secret key. Use it online in your browser, or in the TRACE Studio desktop app.',
+    customCta: 'Try your own workflow',
+    customTag: 'Online or on your computer',
   },
 
   custom: {
     title: 'Custom workflow (live)',
+    onlineTitle: 'Use the online version',
+    onlineBody: 'Runs in your browser, nothing to install, and nothing to set up: describe your job, choose a secret key, and watch a real model do it twice.',
+    onlineCta: 'Open the online version',
+    onlineNote: 'Your secret key is sent to the server to run the job. For full privacy, use the desktop app.',
+    desktopTitle: 'Prefer to run it on your own computer?',
     checking: 'Looking for TRACE Studio on this computer…',
     found: 'TRACE Studio is running on this computer',
     starting: 'TRACE Studio is starting…',
